@@ -1,6 +1,6 @@
 DATASET:
   ROOT: './data/teamtrack'
-  NAME: 'handball_side'
+  NAME: 'Basketball_SideView2'
   SUBSET: 'test'
 
 OUTPUT:
@@ -19,18 +19,14 @@ TRACKER:
     TRACK_BUFFER: 30
     MATCH_THRESH: 0.8
     CONF: 0.1
-    IMGSZ: 2048
+    IMGSZ: 2560
     VID_STRIDE: 1
-    MODEL_PATH: 'yolov8x.pt'
-    CONFIGURATION_PATH: 'scripts/benchmark/yolov8/botsort/best_configs/Handball_SideView.yaml'
-    GMC_METHOD: 'sparseOptFlow'
-    PROXIMITY_THRESH: 0.5
-    APPEARANCE_THRESH: 0.25
-    WITH_REID: False
+    MODEL_PATH: '/groups/gaa50073/atom/SoccerTrackProject/TeamTrack/models/yolov8/Basketball_SideView2.pt'
+    CONFIGURATION_PATH: 'scripts/benchmark/yolov8/botsort/best_params.yaml' # not used for HPO
 
 TRACKEVAL:
   DATASET:
     GT_FOLDER: './data/teamtrack-mot/'
     TRACKERS_FOLDER: './outputs/benchmark/test/'
     SPLIT_TO_EVAL: 'test'
-    BENCHMARK: 'handball_side'
+    BENCHMARK: 'Basketball_SideView2'

@@ -15,50 +15,48 @@ def load_df(csv_file):
 
 def to_mot_format(df, sport):
     """Convert DataFrame to MOT format"""
+    # Create empty DataFrame for MOT format
+    mot_df = pd.DataFrame()
+    
+    # Get all unique combinations of TeamID and PlayerID
+    team_player_cols = [(team, player) for team, player in zip(df.columns.get_level_values(0), df.columns.get_level_values(1))]
+    
     rows = []
     # Iterate through each frame
     for frame_idx, row in df.iterrows():
         # For each team/player combination
-        for team, player in zip(df.columns.get_level_values(0), df.columns.get_level_values(1)):
+        for (team, player) in team_player_cols:
+            # Skip if it's not a valid player column (e.g., might be frame number column)
             if player not in ['0','1','2','3','4','5','6','7','8','9','10','11','BALL']:
                 continue
                 
-            try:
-                # Get bounding box values
-                bb_height = row[(team, player, 'bb_height')]
-                bb_left = row[(team, player, 'bb_left')]
-                bb_top = row[(team, player, 'bb_top')]
-                bb_width = row[(team, player, 'bb_width')]
-                
-                # Skip if any value is NaN
-                if pd.isna([bb_height, bb_left, bb_top, bb_width]).any():
-                    continue
-                    
-                # Create unique ID: team0_player10 becomes 10, team1_player10 becomes 110
-                player_id = int(f"{team}{player}" if player != "BALL" else "-1")
-                if team == "1" and player != "BALL":
-                    player_id = player_id + 100  # Add 100 to team 1's players
-                    
-                # Create MOT format row
-                mot_row = {
-                    'frame': frame_idx + 1,  # MOT format uses 1-based frame numbers
-                    'id': player_id,
-                    'bb_left': bb_left,
-                    'bb_top': bb_top,
-                    'bb_width': bb_width,
-                    'bb_height': bb_height,
-                    'conf': 1,  # confidence score
-                    'x': -1,    # 3D position (not used)
-                    'y': -1,
-                    'z': -1
-                }
-                rows.append(mot_row)
-            except KeyError:
+            # Get bounding box values
+            bb_height = row[(team, player, 'bb_height')]
+            bb_left = row[(team, player, 'bb_left')]
+            bb_top = row[(team, player, 'bb_top')]
+            bb_width = row[(team, player, 'bb_width')]
+            
+            # Skip if any value is NaN
+            if pd.isna([bb_height, bb_left, bb_top, bb_width]).any():
                 continue
+                
+            # Create MOT format row
+            mot_row = {
+                'frame': frame_idx + 1,  # MOT format uses 1-based frame numbers
+                'id': int(f"{team}{player}" if player != "BALL" else "-1"),  # Create unique ID combining team and player
+                'bb_left': bb_left,
+                'bb_top': bb_top,
+                'bb_width': bb_width,
+                'bb_height': bb_height,
+                'conf': 1,  # confidence score
+                'x': -1,    # 3D position (not used)
+                'y': -1,
+                'z': -1
+            }
+            rows.append(mot_row)
     
-    # Create final DataFrame and sort by frame and id
+    # Create final DataFrame
     mot_df = pd.DataFrame(rows)
-    mot_df = mot_df.sort_values(['frame', 'id'])
     return mot_df
 
 def csv2txt(csv_file, text_file):

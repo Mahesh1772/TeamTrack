@@ -213,3 +213,5 @@ cython_debug/
 # Built Visual Studio Code Extensions
 *.vsix
 teamtrack/datamodule.py
+*.pt
+SoccerTrack/

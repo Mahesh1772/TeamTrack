@@ -1,0 +1,12 @@
+numpy>=1.20.0
+torch>=1.7.0
+torchvision>=0.8.0
+ultralytics
+trackeval
+yacs
+pandas
+opencv-python
+tqdm
+einops
+scipy
+matplotlib 

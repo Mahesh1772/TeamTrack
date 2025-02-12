@@ -3,17 +3,67 @@ import argparse
 from glob import glob
 import configparser
 import cv2
-import soccertrack
 import numpy as np
+import pandas as pd
 from joblib import Parallel, delayed
 
+def load_df(csv_file):
+    """Load CSV file into DataFrame"""
+    # Read with the first 3 rows as headers to understand the structure
+    df = pd.read_csv(csv_file, header=[0,1,2])
+    return df
+
+def to_mot_format(df, sport):
+    """Convert DataFrame to MOT format"""
+    # Create empty DataFrame for MOT format
+    mot_df = pd.DataFrame()
+    
+    # Get all unique combinations of TeamID and PlayerID
+    team_player_cols = [(team, player) for team, player in zip(df.columns.get_level_values(0), df.columns.get_level_values(1))]
+    
+    rows = []
+    # Iterate through each frame
+    for frame_idx, row in df.iterrows():
+        # For each team/player combination
+        for (team, player) in team_player_cols:
+            # Skip if it's not a valid player column (e.g., might be frame number column)
+            if player not in ['0','1','2','3','4','5','6','7','8','9','10','11','BALL']:
+                continue
+                
+            # Get bounding box values
+            bb_height = row[(team, player, 'bb_height')]
+            bb_left = row[(team, player, 'bb_left')]
+            bb_top = row[(team, player, 'bb_top')]
+            bb_width = row[(team, player, 'bb_width')]
+            
+            # Skip if any value is NaN
+            if pd.isna([bb_height, bb_left, bb_top, bb_width]).any():
+                continue
+                
+            # Create MOT format row
+            mot_row = {
+                'frame': frame_idx + 1,  # MOT format uses 1-based frame numbers
+                'id': int(f"{team}{player}" if player != "BALL" else "-1"),  # Create unique ID combining team and player
+                'bb_left': bb_left,
+                'bb_top': bb_top,
+                'bb_width': bb_width,
+                'bb_height': bb_height,
+                'conf': 1,  # confidence score
+                'x': -1,    # 3D position (not used)
+                'y': -1,
+                'z': -1
+            }
+            rows.append(mot_row)
+    
+    # Create final DataFrame
+    mot_df = pd.DataFrame(rows)
+    return mot_df
 
 def csv2txt(csv_file, text_file):
     print(f"Converting {csv_file} to {text_file}")
-
-    sport = csv_file.split("/")[-4].split("_")[0].lower()
-    df = soccertrack.load_df(csv_file)
-    bbdf = df.to_mot_format(sport).dropna()
+    sport = csv_file.split(os.sep)[-4].split("_")[0].lower()
+    df = load_df(csv_file)
+    bbdf = to_mot_format(df, sport).dropna()
     arr = bbdf.values
     np.savetxt(text_file, arr, fmt="%d", delimiter=",")
 
@@ -88,14 +138,9 @@ def main(args):
     # Create output directory structure
     os.makedirs(output_dir, exist_ok=True)
 
-    # Loop over each dataset
+    # Modified to match your folder name
     dataset_names = [
-        "Basketball_SideView",
-        "Basketball_SideView2",
-        "Basketball_TopView",
-        "Handball_SideView",
-        "Soccer_SideView",
-        "Soccer_TopView",
+        "handball_side",  # Changed from "Handball_SideView" to match your structure
     ]
     for dataset_name in dataset_names:
         dataset_dir = os.path.join(teamtrack_dir, dataset_name)

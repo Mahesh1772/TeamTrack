@@ -3,17 +3,32 @@ import argparse
 from glob import glob
 import configparser
 import cv2
-import soccertrack
+import sportslabkit
 import numpy as np
 from joblib import Parallel, delayed
 
 
 def csv2txt(csv_file, text_file):
     print(f"Converting {csv_file} to {text_file}")
-
-    sport = csv_file.split("/")[-4].split("_")[0].lower()
-    df = soccertrack.load_df(csv_file)
-    bbdf = df.to_mot_format(sport).dropna()
+    
+    # Use os.path to handle paths correctly across operating systems
+    path_parts = os.path.normpath(csv_file).split(os.sep)
+    # Find the part containing "_SideView" or "_TopView"
+    for part in path_parts:
+        if "_SideView" in part or "_TopView" in part:
+            sport = part.split("_")[0].lower()
+            break
+    else:
+        raise ValueError(f"Could not determine sport from path: {csv_file}")
+    
+    df = sportslabkit.load_df(csv_file)
+    try:
+        # Try with sport parameter first
+        bbdf = df.to_mot_format(sport=sport).dropna()
+    except TypeError:
+        # Fallback to no parameter if not supported
+        bbdf = df.to_mot_format().dropna()
+    
     arr = bbdf.values
     np.savetxt(text_file, arr, fmt="%d", delimiter=",")
 
@@ -90,12 +105,12 @@ def main(args):
 
     # Loop over each dataset
     dataset_names = [
-        "Basketball_SideView",
-        "Basketball_SideView2",
-        "Basketball_TopView",
+        #"Basketball_SideView",
+        #"Basketball_SideView2",
+        #"Basketball_TopView",
         "Handball_SideView",
-        "Soccer_SideView",
-        "Soccer_TopView",
+        #"Soccer_SideView",
+        #"Soccer_TopView",
     ]
     for dataset_name in dataset_names:
         dataset_dir = os.path.join(teamtrack_dir, dataset_name)

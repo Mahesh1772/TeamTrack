@@ -10,8 +10,8 @@ import requests
 from dotenv import load_dotenv
 from labelbox import Client
 
-from soccertrack.dataframe import BBoxDataFrame
-from soccertrack.logger import tqdm, logger
+from sportslabkit.dataframe import BBoxDataFrame
+from sportslabkit.logger import tqdm, logger
 
 load_dotenv()
 

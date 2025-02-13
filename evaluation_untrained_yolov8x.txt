@@ -1,0 +1,79 @@
+Evaluating yolov8-botsort
+
+1 eval_sequence(2nd_fisheye_660-690, yolov8-botsort)                     0.2910 sec
+2 eval_sequence(2nd_fisheye_690-720, yolov8-botsort)                     0.1404 sec
+3 eval_sequence(2nd_fisheye_720-750, yolov8-botsort)                     0.1761 sec
+4 eval_sequence(2nd_fisheye_750-780, yolov8-botsort)                     0.1864 sec
+5 eval_sequence(2nd_fisheye_780-810, yolov8-botsort)                     0.1715 sec
+6 eval_sequence(2nd_fisheye_810-840, yolov8-botsort)                     0.1533 sec
+7 eval_sequence(2nd_fisheye_840-870, yolov8-botsort)                     0.1599 sec
+8 eval_sequence(2nd_fisheye_870-900, yolov8-botsort)                     0.1732 sec
+9 eval_sequence(2nd_fisheye_90-120, yolov8-botsort)                      0.1485 sec
+10 eval_sequence(2nd_fisheye_900-930, yolov8-botsort)                     0.2250 sec
+
+All sequences for yolov8-botsort finished in 1.83 seconds
+
+HOTA: yolov8-botsort-pedestrian    HOTA      DetA      AssA      DetRe     DetPr     AssRe     AssPr     LocA      OWTA      HOTA(0)   LocA(0)   HOTALocA(0)
+2nd_fisheye_660-690                0         0         0         0         0         0         0         100       0         0         100       0
+2nd_fisheye_690-720                0         0         0         0         0         0         0         100       0         0         100       0
+2nd_fisheye_720-750                0         0         0         0         0         0         0         100       0         0         100       0
+2nd_fisheye_750-780                0         0         0         0         0         0         0         100       0         0         100       0
+2nd_fisheye_780-810                0.13585   0.035086  0.52602   0.035088  59.211    0.52632   59.211    73.518    0.13586   0.22951   59.778    0.1372
+2nd_fisheye_810-840                0         0         0         0         0         0         0         100       0         0         100       0
+2nd_fisheye_840-870                0         0         0         0         0         0         0         100       0         0         100       0
+2nd_fisheye_870-900                0.024159  0.0062378 0.093567  0.0062378 84.211    0.093567  84.211    84.01     0.024159  0.028689  81.012    0.023241
+2nd_fisheye_90-120                 0         0         0         0         0         0         0         100       0         0         100       0
+2nd_fisheye_900-930                0.16286   0.042055  0.6307    0.042055  81.203    0.63088   81.203    82.755    0.16286   0.20059   79.791    0.16005
+COMBINED                           0.070486  0.0083383 0.6007    0.0083384 70.395    0.60097   79.506    76.921    0.070486  0.096814  69.861    0.067635
+
+CLEAR: yolov8-botsort-pedestrian   MOTA      MOTP      MODA      CLR_Re    CLR_Pr    MTR       PTR       MLR       sMOTA     CLR_TP    CLR_FN    CLR_FP    IDSW      MT        PT        ML        Frag
+2nd_fisheye_660-690                0         0         0         0         0         0         0         100       0         0         13515     0         0         0         0         16        0
+2nd_fisheye_690-720                0         0         0         0         0         0         0         100       0         0         13515     0         0         0         0         15        0
+2nd_fisheye_720-750                0         0         0         0         0         0         0         100       0         0         13515     0         0         0         0         16        0
+2nd_fisheye_750-780                0         0         0         0         0         0         0         100       0         0         13500     0         0         0         0         15        0
+2nd_fisheye_780-810                0.02963   63.403    0.02963   0.044444  75        0         0         100       0.013364  6         13494     2         0         0         0         15        0
+2nd_fisheye_810-840                0         0         0         0         0         0         0         100       0         0         13500     0         0         0         0         16        0
+2nd_fisheye_840-870                0         0         0         0         0         0         0         100       0         0         13500     0         0         0         0         16        0
+2nd_fisheye_870-900                0.0074074 81.012    0.0074074 0.0074074 100       0         0         100       0.0060009 1         13499     0         0         0         0         16        0
+2nd_fisheye_90-120                 0         0         0         0         0         0         0         100       0         0         13515     0         0         0         0         16        0
+2nd_fisheye_900-930                0.05179   79.791    0.05179   0.05179   100       0         0         100       0.041324  7         13509     0         0         0         0         16        0
+COMBINED                           0.0088839 72.855    0.0088839 0.010365  87.5      0         0         100       0.0060704 14        135062    2         0         0         0         157       0
+
+Identity: yolov8-botsort-pedestrianIDF1      IDR       IDP       IDTP      IDFN      IDFP
+2nd_fisheye_660-690                0         0         0         0         13515     0
+2nd_fisheye_690-720                0         0         0         0         13515     0
+2nd_fisheye_720-750                0         0         0         0         13515     0
+2nd_fisheye_750-780                0         0         0         0         13500     0
+2nd_fisheye_780-810                0.088836  0.044444  75        6         13494     2
+2nd_fisheye_810-840                0         0         0         0         13500     0
+2nd_fisheye_840-870                0         0         0         0         13500     0
+2nd_fisheye_870-900                0.014814  0.0074074 100       1         13499     0
+2nd_fisheye_90-120                 0         0         0         0         13515     0
+2nd_fisheye_900-930                0.10353   0.05179   100       7         13509     0
+COMBINED                           0.020727  0.010365  87.5      14        135062    2
+
+VACE: yolov8-botsort-pedestrian    SFDA      ATA
+2nd_fisheye_660-690                0         0
+2nd_fisheye_690-720                0         0
+2nd_fisheye_720-750                0         0
+2nd_fisheye_750-780                0         0
+2nd_fisheye_780-810                0.066419  0.083333
+2nd_fisheye_810-840                0         0
+2nd_fisheye_840-870                0         0
+2nd_fisheye_870-900                0.011252  0.013072
+2nd_fisheye_90-120                 0         0
+2nd_fisheye_900-930                0.077489  0.091402
+COMBINED                           0.015516  0.019434
+
+Count: yolov8-botsort-pedestrian   Dets      GT_Dets   IDs       GT_IDs
+2nd_fisheye_660-690                0         13515     0         16
+2nd_fisheye_690-720                0         13515     0         15
+2nd_fisheye_720-750                0         13515     0         16
+2nd_fisheye_750-780                0         13500     0         15
+2nd_fisheye_780-810                8         13500     1         15
+2nd_fisheye_810-840                0         13500     0         16
+2nd_fisheye_840-870                0         13500     0         16
+2nd_fisheye_870-900                1         13500     1         16
+2nd_fisheye_90-120                 0         13515     0         16
+2nd_fisheye_900-930                7         13516     1         16
+COMBINED                           16        135076    3         157

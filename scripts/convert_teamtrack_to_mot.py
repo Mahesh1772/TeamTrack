@@ -11,33 +11,60 @@ from joblib import Parallel, delayed
 def csv2txt(csv_file, text_file):
     print(f"Converting {csv_file} to {text_file}")
     
-    # Use os.path to handle paths correctly across operating systems
-    path_parts = os.path.normpath(csv_file).split(os.sep)
-    # Find the part containing "_SideView" or "_TopView"
-    for part in path_parts:
-        if "_SideView" in part or "_TopView" in part:
-            sport = part.split("_")[0].lower()
-            break
-    else:
-        raise ValueError(f"Could not determine sport from path: {csv_file}")
-    
+    # Load data
     df = sportslabkit.load_df(csv_file)
-    try:
-        # Try with sport parameter first
-        bbdf = df.to_mot_format(sport=sport).dropna()
-        
-        # Set class IDs in the conf column (7th column in MOT format)
-        # For players (any team that's not BALL)
-        bbdf.loc[bbdf['TeamID'] != 'BALL', 'conf'] = 1  # Player class
-        # For ball
-        bbdf.loc[bbdf['TeamID'] == 'BALL', 'conf'] = 2  # Ball class
-        
-    except TypeError:
-        # Fallback to no parameter if not supported
-        bbdf = df.to_mot_format().dropna()
     
-    arr = bbdf.values
-    np.savetxt(text_file, arr, fmt="%d", delimiter=",")
+    # Extract ball data before conversion
+    ball_cols = [col for col in df.columns if 'BALL' in str(col)]
+    ball_data = df[ball_cols].dropna()
+    
+    # Store ball positions for matching
+    ball_positions = {}  # frame -> (left, top, width, height)
+    for frame in ball_data.index:
+        ball_positions[frame] = (
+            ball_data.loc[frame, ('BALL', 'BALL', 'bb_left')],
+            ball_data.loc[frame, ('BALL', 'BALL', 'bb_top')],
+            ball_data.loc[frame, ('BALL', 'BALL', 'bb_width')],
+            ball_data.loc[frame, ('BALL', 'BALL', 'bb_height')]
+        )
+    
+    # Convert to MOT format
+    bbdf = df.to_mot_format().dropna()
+    
+    # Initialize class_id column with default player class
+    bbdf['class_id'] = 1
+    
+    # Set class_id=2 for ball detections by matching positions
+    for idx, row in bbdf.iterrows():
+        frame = int(row['frame'])
+        if frame in ball_positions:
+            ball_pos = ball_positions[frame]
+            # Match ball position (with small tolerance for float comparison)
+            if (abs(row['bb_left'] - ball_pos[0]) < 0.1 and 
+                abs(row['bb_top'] - ball_pos[1]) < 0.1 and 
+                abs(row['bb_width'] - ball_pos[2]) < 0.1 and 
+                abs(row['bb_height'] - ball_pos[3]) < 0.1):
+                bbdf.loc[idx, 'class_id'] = 2
+    
+    # Set confidence to 1.0 for all detections (ground truth)
+    bbdf['conf'] = 1.0
+    
+    # Verify we have both classes
+    n_players = (bbdf['class_id'] == 1).sum()
+    n_balls = (bbdf['class_id'] == 2).sum()
+    print(f"Found {n_players} player detections and {n_balls} ball detections in {csv_file}")
+    
+    # Select and order columns correctly for MOT format
+    mot_cols = ['frame', 'id', 'bb_left', 'bb_top', 'bb_width', 'bb_height', 'class_id', 'conf']
+    bbdf = bbdf[mot_cols]
+    
+    # Add -1,-1 columns
+    bbdf['-1_1'] = -1
+    bbdf['-1_2'] = -1
+    
+    # Ensure numeric format and save
+    arr = bbdf.values.astype(float)
+    np.savetxt(text_file, arr, fmt='%d', delimiter=',')
 
 def process_csv_file(csv_file, output_dir, dataset_name, subset, subset_dir):
     # Prepare sequence directory structure

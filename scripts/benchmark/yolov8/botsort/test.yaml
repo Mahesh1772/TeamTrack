@@ -24,3 +24,4 @@ TRACKEVAL:
     TRACKERS_FOLDER: './outputs/benchmark/test/'
     SPLIT_TO_EVAL: 'test'
     BENCHMARK: 'Handball_SideView'
+    CLASSES_TO_EVAL: ['player', 'ball']

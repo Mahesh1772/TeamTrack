@@ -25,6 +25,13 @@ def csv2txt(csv_file, text_file):
     try:
         # Try with sport parameter first
         bbdf = df.to_mot_format(sport=sport).dropna()
+        
+        # Set class IDs in the conf column (7th column in MOT format)
+        # For players (any team that's not BALL)
+        bbdf.loc[bbdf['TeamID'] != 'BALL', 'conf'] = 1  # Player class
+        # For ball
+        bbdf.loc[bbdf['TeamID'] == 'BALL', 'conf'] = 2  # Ball class
+        
     except TypeError:
         # Fallback to no parameter if not supported
         bbdf = df.to_mot_format().dropna()

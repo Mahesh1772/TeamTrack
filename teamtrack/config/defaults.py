@@ -163,7 +163,8 @@ _C.TRACKEVAL.DATASET.OUTPUT_FOLDER = None
 # List of trackers to evaluate
 _C.TRACKEVAL.DATASET.TRACKERS_TO_EVAL = None
 # Classes to evaluate
-_C.TRACKEVAL.DATASET.CLASSES_TO_EVAL = ["pedestrian"]
+# _C.TRACKEVAL.DATASET.CLASSES_TO_EVAL = ["pedestrian"]
+_C.TRACKEVAL.DATASET.CLASSES_TO_EVAL = ["player", "ball"]
 # Benchmark to evaluate
 _C.TRACKEVAL.DATASET.BENCHMARK = "Basketball_SideView"
 # Split of the dataset to evaluate

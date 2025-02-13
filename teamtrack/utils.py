@@ -143,10 +143,11 @@ def save_results(results: list, output_path: str) -> None:
         boxes = result.boxes.xyxy.cpu().numpy().astype(int) if n_results > 0 else []
         ids = result.boxes.id.cpu().numpy().astype(int) if n_results > 0 else []
         confs = result.boxes.conf.cpu().numpy().astype(float) if n_results > 0 else []
+        cls = result.boxes.cls.cpu().numpy().astype(int) if n_results > 0 else []
 
-        for box, id, conf in zip(boxes, ids, confs):
+        for box, id, conf, cl in zip(boxes, ids, confs, cls):
             bb_left, bb_top, bb_width, bb_height = box[0], box[1], box[2] - box[0], box[3] - box[1]
-            rows.append([frame, id, bb_left, bb_top, bb_width, bb_height, conf, -1, -1, -1])
+            rows.append([frame, id, bb_left, bb_top, bb_width, bb_height, cl + 1, -1, -1, -1])
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     if rows == []:  # if there are no detections, create an empty file
@@ -155,7 +156,7 @@ def save_results(results: list, output_path: str) -> None:
             f.write("")
     else:
         logger.info(f"Saving results to {output_path}")
-        np.savetxt(output_path, rows, fmt="%d,%d,%d,%d,%d,%d,%f,%d,%d,%d")
+        np.savetxt(output_path, rows, fmt="%d,%d,%d,%d,%d,%d,%d,%d,%d,%d")
 
 
 def run_trackeval(eval_config: dict, dataset_config: dict, metrics_config: dict) -> dict:

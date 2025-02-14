@@ -4,7 +4,7 @@ import tempfile
 
 import trackeval
 import numpy as np
-from soccertrack.logger import logger
+from sportslabkit.logger import logger
 from teamtrack.utils import (load_yaml, make_video_paths, make_yaml,
                              parse_args, run_trackeval, save_results, visualize_results)
 from ultralytics import YOLO

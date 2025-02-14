@@ -1,6 +1,6 @@
 DATASET:
   ROOT: './data/teamtrack'
-  NAME: 'Basketball_SideView2'
+  NAME: 'Handball_SideView'
   SUBSET: 'val'
 
 OUTPUT:
@@ -16,14 +16,14 @@ TRACKER:
     NEW_TRACK_THRESH: 0.6
     TRACK_BUFFER: 30
     MATCH_THRESH: 0.8
-    MODEL_PATH: './models/yolov8/yolov8x.pt'
+    MODEL_PATH: 'yolov8/Handball_Sideview_trained18/weights/best.pt'
 
 TRACKEVAL:
   DATASET:
     GT_FOLDER: './data/teamtrack-mot/'
     TRACKERS_FOLDER: './outputs/benchmark/hpo/'
     SPLIT_TO_EVAL: 'val'
-    BENCHMARK: 'Basketball_SideView2'
+    BENCHMARK: 'Handball_SideView'
     TRACKERS_TO_EVAL: ['yolov8-bytetrack']
     
 HPO:

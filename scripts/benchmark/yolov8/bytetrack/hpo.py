@@ -10,7 +10,7 @@ import yaml
 from ultralytics import YOLO
 
 import trackeval
-from soccertrack.logger import logger
+from sportslabkit.logger import logger
 from teamtrack.utils import parse_args, make_yaml, make_video_paths, save_results, run_trackeval
 
 

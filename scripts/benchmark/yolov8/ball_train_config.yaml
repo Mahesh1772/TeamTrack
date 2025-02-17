@@ -1,0 +1,10 @@
+DATASET:
+  ROOT: './data/yolox-handball'
+  NAME: 'ball_detector'
+
+MODEL:
+  NAME: 'yolov8n.pt'  # Start with YOLOv8 nano
+  EPOCHS: 100
+  BATCH_SIZE: 16
+  IMGSZ: 1024
+  SINGLE_CLS: True  # Important: Only one class (ball) 

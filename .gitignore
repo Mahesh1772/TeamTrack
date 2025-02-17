@@ -215,3 +215,6 @@ cython_debug/
 teamtrack/datamodule.py
 *.pt
 SoccerTrack/
+*.txt
+/custom_video_results/clip4_results3
+/custom_video_results/clip4_results2

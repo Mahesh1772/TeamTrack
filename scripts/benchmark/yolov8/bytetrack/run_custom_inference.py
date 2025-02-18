@@ -31,50 +31,62 @@ def is_in_court(box, frame_height, frame_width):
     return is_valid_size and is_in_bounds
 
 def run_inference_on_video():
+    # Get absolute path to TeamTrack directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))  # bytetrack directory
+    teamtrack_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+    
+    # Create output directory
+    output_dir = os.path.join(teamtrack_dir, "custom_video_results")
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"Created output directory at: {output_dir}")
+    
     # Video path
     video_path = r"C:\Users\Demo-user\Documents\Gameplay\Clip4\Clip4-1.mp4"
     
     # Load the trained model
-    model_path = "yolov8/Handball_Sideview_trained18/weights/best.pt"
+    model_path = os.path.join(teamtrack_dir, "yolov8/Handball_Sideview_trained21/weights/best.pt")
     model = YOLO(model_path)
     
-    # Get video properties
-    cap = cv2.VideoCapture(video_path)
-    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
-    
-    # Output directory
-    output_dir = "custom_video_results"
-    os.makedirs(output_dir, exist_ok=True)
-    
     # Tracker config path
-    tracker_config = "scripts/benchmark/yolov8/bytetrack/tracker_config.yaml"
+    tracker_config = os.path.join(current_dir, "tracker_config.yaml")
     
-    # Run inference with tracking
-    results = model.track(
-        source=video_path,
-        save=True,              # Save video
-        save_txt=True,          # Save tracking results in MOT format
-        save_conf=True,         # Save confidence scores
-        conf=0.3,              # Increased confidence threshold
-        iou=0.5,              # Increased IOU threshold
-        imgsz=1024,            # Image size
-        tracker=tracker_config, # Use tracker config file
-        project=output_dir,     # Save results to custom_video_results
-        name="clip4_results",   # Subfolder name
-        stream=True            # Stream inference to prevent RAM issues
-    )
+    # Check if model file exists
+    if not os.path.exists(model_path):
+        print(f"ERROR: Model not found at {model_path}")
+        return
+        
+    # Check if video file exists
+    if not os.path.exists(video_path):
+        print(f"ERROR: Video not found at {video_path}")
+        return
+        
+    print(f"Using model: {model_path}")
+    print(f"Processing video: {video_path}")
     
-    # Process results
-    for r in results:
-        boxes = r.boxes  # Boxes object for bbox outputs
-        if boxes and boxes.id is not None:
-            # Filter boxes to only include court players
-            valid_boxes = [box for box in boxes if is_in_court(box.xyxy[0], frame_height, frame_width)]
-            print(f"Frame tracked. Found {len(valid_boxes)} players on court")
-    
-    print(f"Results saved to {output_dir}/clip4_results")
+    try:
+        # Run inference with tracking
+        results = model.track(
+            source=video_path,
+            save=True,              
+            save_txt=True,          
+            save_conf=True,         
+            conf=0.3,              
+            iou=0.5,              
+            imgsz=1024,            
+            tracker=tracker_config, 
+            project=output_dir,     
+            name="clip4_results",   
+            exist_ok=True,         
+            stream=True            
+        )
+        
+        # Force processing of results
+        for r in results:
+            pass  # Process each frame
+            
+    except Exception as e:
+        print(f"Error during inference: {str(e)}")
+        return
 
 if __name__ == "__main__":
     run_inference_on_video()

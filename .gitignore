@@ -218,3 +218,5 @@ SoccerTrack/
 *.txt
 /custom_video_results/clip4_results3
 /custom_video_results/clip4_results2
+/YOLOX
+*.avi

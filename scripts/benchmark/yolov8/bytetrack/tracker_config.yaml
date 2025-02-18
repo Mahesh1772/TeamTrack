@@ -1,6 +1,6 @@
 tracker_type: bytetrack
-track_high_thresh: 0.4
-track_low_thresh: 0.2
-new_track_thresh: 0.5
-track_buffer: 60
-match_thresh: 0.8 
+track_high_thresh: 0.3      # Lower because ball detection might be less confident
+track_low_thresh: 0.1       # Lower to maintain tracking when ball is blurry/fast
+new_track_thresh: 0.4       # Lower to more easily create new tracks
+track_buffer: 30            # Shorter because handball moves fast
+match_thresh: 0.5          # Lower because ball position changes a lot between frames

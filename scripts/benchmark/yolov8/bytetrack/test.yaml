@@ -21,8 +21,8 @@ TRACKER:
     CONF: 0.1
     IMGSZ: 1024
     VID_STRIDE: 1
-    MODEL_PATH: 'yolov8/Handball_Sideview_trained18/weights/best.pt'
-    CONFIGURATION_PATH: 'scripts/benchmark/yolov8/bytetrack/best_configs/Handball_SideView.yaml'
+    MODEL_PATH: 'yolov8/Handball_Sideview_trained29/weights/best.pt'
+    CONFIGURATION_PATH: 'scripts/benchmark/yolov8/bytetrack/tracker_config.yaml'
 
 TRACKEVAL:
   DATASET:

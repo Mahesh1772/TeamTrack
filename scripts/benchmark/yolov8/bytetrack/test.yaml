@@ -1,11 +1,13 @@
 DATASET:
-  ROOT: './data/teamtrack'
-  NAME: 'Handball_SideView'
-  SUBSET: 'test'
+  ROOT: './data'
+  NAME: 'yolox-handball'
+  SUBSET: 'val'
+  GAME: 'game1'
+  CLIP: 'clip6'
 
 OUTPUT:
   ROOT: './outputs/benchmark/test'
-  SAVE_EVAL: True
+  SAVE_EVAL: False
   SAVE_VIDEO: True
   OVERWRITE: True
 
@@ -19,14 +21,14 @@ TRACKER:
     TRACK_BUFFER: 63
     MATCH_THRESH: 0.50
     CONF: 0.1
-    IMGSZ: 1024
+    IMGSZ: 512
     VID_STRIDE: 1
     MODEL_PATH: 'yolov8/Handball_Sideview_trained29/weights/best.pt'
     CONFIGURATION_PATH: 'scripts/benchmark/yolov8/bytetrack/tracker_config.yaml'
 
 TRACKEVAL:
   DATASET:
-    GT_FOLDER: './data/teamtrack-mot/'
+    GT_FOLDER: './data/yolox-handball/val'
     TRACKERS_FOLDER: './outputs/benchmark/test/'
-    SPLIT_TO_EVAL: 'test'
+    SPLIT_TO_EVAL: 'val'
     BENCHMARK: 'Handball_SideView'

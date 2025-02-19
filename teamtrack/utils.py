@@ -122,6 +122,13 @@ def make_video_paths(dataset_root: str, dataset_name: str, subset: str) -> list:
     return video_paths
 
 
+def make_image_paths(dataset_root: str, dataset_name: str, subset: str) -> list:
+    """Return a list of paths to images in dataset_path."""
+    image_paths = sorted(glob(os.path.join(dataset_root, dataset_name, subset, "images", "*")))
+    assert len(image_paths) > 0, f"No images found in {dataset_root}/{dataset_name}/{subset}/images"
+    return image_paths
+
+
 # For 'result' object, assuming a structure where 'boxes' has 'id', 'xyxy', 'conf' attributes.
 def save_results(results: list, output_path: str) -> None:
     """
@@ -200,68 +207,105 @@ def generate_colors(num_colors: int) -> list[tuple[int, int, int]]:
     return color
 
 
-def visualize_results(video_path: str, text_path: str, save_path: str) -> None:
+def visualize_results(video_path: str, text_path: str, save_path: str, is_image_sequence=False) -> None:
     """
     Visualize tracking results on video frames given the paths to a video file and a text file.
 
     Args:
-        video_path (str): The path to the input video file.
+        video_path (str): The path to the input video file or image directory
         text_path (str): The path to the text file containing tracking results.
         save_path (str): The path to the output video file.
+        is_image_sequence (bool): Whether the input is an image sequence instead of video.
 
     Returns:
         None
     """
     # Load tracking results into pandas DataFrame
     columns = ["frame", "id", "bb_left", "bb_top", "bb_width", "bb_height", "conf", "x", "y", "z"]
-    data = pd.read_csv(text_path, header=None, names=columns, delimiter=",")
+    if os.path.exists(text_path) and os.path.getsize(text_path) > 0:
+        data = pd.read_csv(text_path, header=None, names=columns, delimiter=",")
+    else:
+        data = pd.DataFrame(columns=columns)
 
     # Generate unique colors for each unique ID
-    unique_ids = data["id"].unique()
+    unique_ids = data["id"].unique() if not data.empty else []
     colors = generate_colors(len(unique_ids))
     id_to_color = dict(zip(unique_ids, colors))
 
     # Create parent directory of save_path if it doesn't exist
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-    # Open video file
-    cap = cv2.VideoCapture(video_path)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if is_image_sequence:
+        # Handle image sequence
+        image_paths = sorted(glob(os.path.join(video_path, "*")))
+        if not image_paths:
+            raise ValueError(f"No images found in {video_path}")
+        first_frame = cv2.imread(image_paths[0])
+        height, width = first_frame.shape[:2]
+        num_frames = len(image_paths)
+    else:
+        # Handle video
+        cap = cv2.VideoCapture(video_path)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     # Define the codec and create a VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*"MP4V")
     out = cv2.VideoWriter(save_path, fourcc, 30.0, (width, height))
 
-    frame_id = 1
     # Use tqdm for progress bar
     with tqdm(total=num_frames, ncols=70) as pbar:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        if is_image_sequence:
+            for frame_id, img_path in enumerate(image_paths, 1):
+                frame = cv2.imread(img_path)
+                if frame is None:
+                    continue
 
-            # Get the detections for the current frame only
-            frame_data = data[data["frame"] == frame_id]
-            # Draw the detections on the frame
-            for i, row in frame_data.iterrows():
-                bb_left = int(row["bb_left"])
-                bb_top = int(row["bb_top"])
-                bb_bottom = int(row["bb_top"] + row["bb_height"])
-                bb_right = int(row["bb_left"] + row["bb_width"])
+                # Get the detections for the current frame
+                frame_data = data[data["frame"] == frame_id] if not data.empty else pd.DataFrame()
+                
+                # Draw the detections on the frame
+                for _, row in frame_data.iterrows():
+                    bb_left = int(row["bb_left"])
+                    bb_top = int(row["bb_top"])
+                    bb_bottom = int(row["bb_top"] + row["bb_height"])
+                    bb_right = int(row["bb_left"] + row["bb_width"])
 
-                cv2.rectangle(frame, (bb_left, bb_top), (bb_right, bb_bottom), id_to_color[row["id"]], 2)
-                cv2.putText(frame, f'ID: {row["id"]}', (bb_left, bb_top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, id_to_color[row["id"]], 2)
-            # Save the frame to the output video file
-            out.write(frame)
+                    cv2.rectangle(frame, (bb_left, bb_top), (bb_right, bb_bottom), id_to_color[row["id"]], 2)
+                    cv2.putText(frame, f'ID: {row["id"]}', (bb_left, bb_top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, id_to_color[row["id"]], 2)
 
-            # Move to the next frame
-            frame_id += 1
-            pbar.update(1)
+                # Save the frame to the output video file
+                out.write(frame)
+                pbar.update(1)
+        else:
+            frame_id = 1
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Get the detections for the current frame
+                frame_data = data[data["frame"] == frame_id] if not data.empty else pd.DataFrame()
+                
+                # Draw the detections on the frame
+                for _, row in frame_data.iterrows():
+                    bb_left = int(row["bb_left"])
+                    bb_top = int(row["bb_top"])
+                    bb_bottom = int(row["bb_top"] + row["bb_height"])
+                    bb_right = int(row["bb_left"] + row["bb_width"])
+
+                    cv2.rectangle(frame, (bb_left, bb_top), (bb_right, bb_bottom), id_to_color[row["id"]], 2)
+                    cv2.putText(frame, f'ID: {row["id"]}', (bb_left, bb_top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, id_to_color[row["id"]], 2)
+
+                # Save the frame to the output video file
+                out.write(frame)
+                frame_id += 1
+                pbar.update(1)
 
     # Release everything when job is finished
-    cap.release()
+    if not is_image_sequence:
+        cap.release()
     out.release()
     cv2.destroyAllWindows()
 

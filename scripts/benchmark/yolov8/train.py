@@ -60,7 +60,7 @@ def main(args):
         optimizer='AdamW',
         nbs=64,
         overlap_mask=False,
-        patience=50
+        patience=50,
     )
     
     # Copy results

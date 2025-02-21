@@ -220,3 +220,7 @@ SoccerTrack/
 /custom_video_results/clip4_results2
 /YOLOX
 *.avi
+*.mp4
+/yolov8/Handball_Sideview_trained
+/custom_video_results/clip_size_1024
+/custom_video_results

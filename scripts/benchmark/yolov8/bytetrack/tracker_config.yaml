@@ -1,6 +1,13 @@
 tracker_type: bytetrack
-track_high_thresh: 0.3      # Lower because ball detection might be less confident
-track_low_thresh: 0.1       # Lower to maintain tracking when ball is blurry/fast
-new_track_thresh: 0.4       # Lower to more easily create new tracks
-track_buffer: 30            # Shorter because handball moves fast
-match_thresh: 0.5          # Lower because ball position changes a lot between frames
+track_high_thresh: 0.3      # Lower threshold for high-confidence detections
+track_low_thresh: 0.1       # Lower threshold for low-confidence detections
+new_track_thresh: 0.4       # Threshold for creating new tracks
+track_buffer: 30            # Frames to keep track alive without detection
+match_thresh: 0.5           # IOU threshold for matching
+min_box_area: 1            # Minimum box area (small for ball)
+mot20: False               # Don't use MOT20 settings
+
+# Additional parameters for ball tracking
+velocity_weight: 0.6        # Weight for velocity prediction
+acceleration_weight: 0.3    # Weight for acceleration prediction
+smooth_trajectories: True   # Enable trajectory smoothing

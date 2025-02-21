@@ -2,13 +2,13 @@ task: detect
 mode: train
 model: models/yolov8/Handball_Sideview.pt
 data: data/yolox-handball/data.yaml
-epochs: 100
+epochs: 250
 patience: 50
 batch: 16
-imgsz: 1024
+imgsz: 512
 save: true
 save_period: 1
-cache: false
+cache: true
 device: 0
 workers: 8
 project: yolov8

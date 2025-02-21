@@ -8,12 +8,16 @@ import json
 from sklearn.metrics import mean_squared_error
 
 def calculate_iou(box1, box2):
-    """Calculate IoU between two boxes in format [x, y, w, h]"""
-    # Convert to x1, y1, x2, y2
+    """Calculate IOU between two boxes in x,y,w,h format"""
+    # For box1 (ground truth)
     box1_x1 = box1[0] - box1[2]/2
     box1_y1 = box1[1] - box1[3]/2
     box1_x2 = box1[0] + box1[2]/2
     box1_y2 = box1[1] + box1[3]/2
+    
+    # For box2 (prediction)
+    if isinstance(box2, dict):
+        box2 = box2['box']  # Extract numpy array from dict
     
     box2_x1 = box2[0] - box2[2]/2
     box2_y1 = box2[1] - box2[3]/2
@@ -21,22 +25,22 @@ def calculate_iou(box1, box2):
     box2_y2 = box2[1] + box2[3]/2
     
     # Calculate intersection
-    xi1 = max(box1_x1, box2_x1)
-    yi1 = max(box1_y1, box2_y1)
-    xi2 = min(box1_x2, box2_x2)
-    yi2 = min(box1_y2, box2_y2)
-    inter_area = max(xi2 - xi1, 0) * max(yi2 - yi1, 0)
+    x1 = max(box1_x1, box2_x1)
+    y1 = max(box1_y1, box2_y1)
+    x2 = min(box1_x2, box2_x2)
+    y2 = min(box1_y2, box2_y2)
+    
+    intersection = max(0, x2 - x1) * max(0, y2 - y1)
     
     # Calculate union
-    box1_area = (box1_x2 - box1_x1) * (box1_y2 - box1_y1)
-    box2_area = (box2_x2 - box2_x1) * (box2_y2 - box2_y1)
-    union_area = box1_area + box2_area - inter_area
+    box1_area = box1[2] * box1[3]
+    box2_area = box2[2] * box2[3]
+    union = box1_area + box2_area - intersection
     
-    iou = inter_area / union_area if union_area > 0 else 0
-    return iou
+    return intersection / union if union > 0 else 0
 
-def evaluate_predictions(predictions, ground_truth, frame_count):
-    """Calculate evaluation metrics for predictions vs ground truth"""
+def evaluate_predictions(predictions, ground_truth, frame_count, tracks):
+    """Calculate evaluation metrics including tracking information"""
     metrics = {
         'total_frames': frame_count,
         'frames_with_gt': len(ground_truth),
@@ -104,9 +108,20 @@ def evaluate_predictions(predictions, ground_truth, frame_count):
         'f1_score': f1
     })
     
+    # Add trajectory analysis
+    trajectory_metrics = analyze_trajectories(tracks, frame_count)
+    metrics['trajectory'] = trajectory_metrics
+    
+    # Add tracking-specific metrics
+    metrics['tracking'] = {
+        'track_switches': count_track_switches(predictions),
+        'track_fragmentations': count_track_fragmentations(tracks),
+        'tracking_consistency': calculate_tracking_consistency(tracks)
+    }
+    
     return metrics
 
-def get_best_detection(detections, confidence_threshold=0.3):
+def get_best_detection(detections, confidence_threshold=0.1):
     """Get the highest confidence detection above threshold"""
     if len(detections) == 0:
         return None
@@ -115,10 +130,132 @@ def get_best_detection(detections, confidence_threshold=0.3):
     valid_dets = detections[detections.conf >= confidence_threshold]
     if len(valid_dets) == 0:
         return None
-        
+    
     # Get highest confidence detection
     best_idx = valid_dets.conf.argmax()
-    return valid_dets[best_idx]
+    best_det = valid_dets[best_idx]
+    return best_det
+
+def process_frame_results(r, frame_idx, frame_shape):
+    """Process single frame results and return detection info"""
+    if len(r.boxes) > 0:
+        ball_dets = r.boxes[r.boxes.cls == 0]
+        best_detection = get_best_detection(ball_dets)
+        if best_detection is not None:
+            box = best_detection.xywh[0].cpu().numpy()
+            track_id = best_detection.id.cpu().numpy()[0] if best_detection.id is not None else None
+            x, y, w, h = box
+            return {
+                'box': np.array([x/frame_shape[1], y/frame_shape[0], 
+                               w/frame_shape[1], h/frame_shape[0]]),
+                'track_id': track_id,
+                'confidence': best_detection.conf.cpu().numpy()[0]
+            }
+    return None
+
+def analyze_trajectories(tracks, frame_count):
+    """Analyze tracking trajectories"""
+    trajectory_metrics = {
+        'num_tracks': len(tracks),
+        'track_lengths': [],
+        'track_gaps': [],
+        'track_velocities': []
+    }
+    
+    for track_id, detections in tracks.items():
+        # Sort detections by frame number
+        sorted_dets = sorted(detections, key=lambda x: x['frame'])
+        
+        # Calculate track length
+        track_length = len(sorted_dets)
+        trajectory_metrics['track_lengths'].append(track_length)
+        
+        # Calculate gaps in tracking
+        frame_numbers = [d['frame'] for d in sorted_dets]
+        gaps = [frame_numbers[i+1] - frame_numbers[i] - 1 for i in range(len(frame_numbers)-1)]
+        if gaps:
+            trajectory_metrics['track_gaps'].extend(gaps)
+        
+        # Calculate velocities between consecutive frames
+        for i in range(len(sorted_dets)-1):
+            pos1 = sorted_dets[i]['box'][:2]
+            pos2 = sorted_dets[i+1]['box'][:2]
+            velocity = np.linalg.norm(pos2 - pos1)
+            trajectory_metrics['track_velocities'].append(velocity)
+    
+    # Calculate summary statistics
+    trajectory_metrics.update({
+        'avg_track_length': np.mean(trajectory_metrics['track_lengths']),
+        'avg_track_gap': np.mean(trajectory_metrics['track_gaps']) if trajectory_metrics['track_gaps'] else 0,
+        'avg_velocity': np.mean(trajectory_metrics['track_velocities']) if trajectory_metrics['track_velocities'] else 0,
+        'tracking_coverage': sum(trajectory_metrics['track_lengths']) / frame_count
+    })
+    
+    return trajectory_metrics
+
+def count_track_switches(predictions):
+    """Count number of times tracking switches between different track IDs"""
+    switches = 0
+    prev_track_id = None
+    
+    # Sort predictions by frame number
+    sorted_frames = sorted(predictions.keys())
+    
+    for frame_idx in sorted_frames:
+        if 'track_id' in predictions[frame_idx]:
+            current_track_id = predictions[frame_idx]['track_id']
+            if prev_track_id is not None and current_track_id != prev_track_id:
+                switches += 1
+            prev_track_id = current_track_id
+    
+    return switches
+
+def count_track_fragmentations(tracks):
+    """Count number of track fragmentations (gaps in tracking)"""
+    fragmentations = 0
+    
+    for track_id, detections in tracks.items():
+        # Sort detections by frame number
+        sorted_dets = sorted(detections, key=lambda x: x['frame'])
+        
+        # Check for gaps in frame numbers
+        for i in range(len(sorted_dets) - 1):
+            if sorted_dets[i+1]['frame'] - sorted_dets[i]['frame'] > 1:
+                fragmentations += 1
+    
+    return fragmentations
+
+def calculate_tracking_consistency(tracks):
+    """Calculate tracking consistency score based on trajectory smoothness"""
+    if not tracks:
+        return 0.0
+        
+    consistency_scores = []
+    
+    for track_id, detections in tracks.items():
+        if len(detections) < 3:  # Need at least 3 points for consistency check
+            continue
+            
+        # Sort detections by frame number
+        sorted_dets = sorted(detections, key=lambda x: x['frame'])
+        
+        # Calculate consistency based on velocity changes
+        velocities = []
+        for i in range(len(sorted_dets) - 1):
+            pos1 = sorted_dets[i]['box'][:2]
+            pos2 = sorted_dets[i+1]['box'][:2]
+            velocity = np.linalg.norm(pos2 - pos1)
+            velocities.append(velocity)
+        
+        # Calculate velocity consistency (lower variance = more consistent)
+        if len(velocities) > 1:
+            velocity_std = np.std(velocities)
+            velocity_mean = np.mean(velocities)
+            consistency = 1.0 / (1.0 + velocity_std/velocity_mean) if velocity_mean > 0 else 0
+            consistency_scores.append(consistency)
+    
+    # Return average consistency across all tracks
+    return np.mean(consistency_scores) if consistency_scores else 0.0
 
 def run_inference_on_videos():
     # Get absolute path to TeamTrack directory
@@ -130,13 +267,34 @@ def run_inference_on_videos():
     video_base_dir = os.path.join(base_dir, "videos", "game1")
     gt_base_dir = os.path.join(base_dir, "labels", "game1")
     
-    # List of clips to process
-    clips = [f'Clip{i}' for i in range(1, 13)]
+    # Process all available clips
+    clips = []
+    for i in range(1, 13):  # Clips 1-12
+        clip_name = f'Clip{i}'
+        clip_path = os.path.join(video_base_dir, clip_name, f"{clip_name}-1.mp4")
+        if os.path.exists(clip_path):
+            clips.append(clip_name)
+            print(f"Found video: {clip_path}")
+    
+    if not clips:
+        print("No video clips found!")
+        return
+        
+    print(f"Will process these clips: {clips}")
     
     # Load the model
     model_path = os.path.join(teamtrack_dir, "yolov8/Handball_Sideview_trained30/weights/best.pt")
     model = YOLO(model_path)
+    
+    # Verify model loaded correctly
+    print(f"Model info:")
+    print(f"- Task: {model.task}")
+    print(f"- Names: {model.names}")
+    
     tracker_config = os.path.join(current_dir, "tracker_config.yaml")
+    
+    print(f"Model path exists: {os.path.exists(model_path)}")
+    print(f"Model path: {model_path}")
     
     if not os.path.exists(model_path):
         print(f"ERROR: Model not found at {model_path}")
@@ -158,9 +316,7 @@ def run_inference_on_videos():
 
     for clip in clips:
         clip_lower = clip.lower()
-        # Update video path to match new structure
         video_path = os.path.join(video_base_dir, clip, f"{clip}-1.mp4")
-        # Update ground truth path to match new structure
         gt_dir = os.path.join(gt_base_dir, clip_lower)
         
         if not os.path.exists(video_path):
@@ -179,24 +335,54 @@ def run_inference_on_videos():
         os.makedirs(output_dir, exist_ok=True)
         
         try:
-            # Run inference
+            # Verify video can be read
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                print(f"ERROR: Could not open video: {video_path}")
+                continue
+            
+            ret, test_frame = cap.read()
+            if not ret:
+                print(f"ERROR: Could not read frame from video: {video_path}")
+                continue
+            
+            print(f"Video dimensions: {test_frame.shape}")
+            
+            # Test detection on first frame
+            test_results = model.predict(test_frame, conf=0.1)
+            print(f"Test frame detections: {len(test_results[0].boxes)}")
+            
+            cap.release()
+            
+            # Setup video writer
+            cap = cv2.VideoCapture(video_path)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            output_path = os.path.join(output_dir, "results", Path(video_path).name)
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+            
+            # Run inference with lower confidence threshold
             results = model.track(
                 source=video_path,
-                save=True,
+                save=False,  # We'll save manually
                 save_txt=True,
                 save_conf=True,
-                conf=0.3,
-                iou=0.5,
+                conf=0.1,  # Lower confidence threshold for ByteTrack
+                iou=0.3,   # Lower IOU threshold
                 imgsz=1024,
                 tracker=tracker_config,
                 project=output_dir,
                 name="results",
                 exist_ok=True,
-                stream=True
+                stream=True,
+                verbose=False
             )
             
             # Collect predictions and ground truth
-            predictions = {}  # frame_idx -> box
+            predictions = {}  # frame_idx -> detection info
+            tracks = {}      # track_id -> list of frame detections
             ground_truth = {}  # frame_idx -> box
             frame_count = 0
             
@@ -214,23 +400,66 @@ def run_inference_on_videos():
                             ground_truth[frame_idx] = np.array([x, y, w, h])
             
             # Process results
+            frame_count = 0
+            detection_count = 0
+            
             for frame_idx, r in enumerate(results, 1):
                 frame_count += 1
+                orig_img = r.orig_img
+                
                 if len(r.boxes) > 0:
-                    ball_dets = r.boxes[r.boxes.cls == 0]
-                    best_detection = get_best_detection(ball_dets)
-                    if best_detection is not None:
-                        box = best_detection.xywh[0].cpu().numpy()
-                        # Debug print
-                        print(f"\nPrediction frame {frame_idx}:")
-                        print(f"Box values: {box}")
-                        # Normalize coordinates if needed
-                        x, y, w, h = box
-                        predictions[frame_idx] = np.array([x/r.orig_shape[1], y/r.orig_shape[0], 
-                                                         w/r.orig_shape[1], h/r.orig_shape[0]])
+                    detection = process_frame_results(r, frame_idx, r.orig_shape)
+                    if detection:
+                        detection_count += 1
+                        if frame_count % 50 == 0:  # Print every 50th frame
+                            print(f"\nFrame {frame_count}:")
+                            print(f"Detection: {detection}")
+                        
+                        box = detection['box']
+                        track_id = detection['track_id']
+                        conf = detection['confidence']
+                        
+                        # Store normalized coordinates
+                        predictions[frame_idx] = box
+                        
+                        # Store track information
+                        if track_id is not None:
+                            if track_id not in tracks:
+                                tracks[track_id] = []
+                            tracks[track_id].append({
+                                'frame': frame_idx,
+                                'box': box,
+                                'conf': conf
+                            })
+                        
+                        # Draw detection
+                        x, y, w, h = box * np.array([r.orig_shape[1], r.orig_shape[0], 
+                                                   r.orig_shape[1], r.orig_shape[0]])
+                        x1 = int(x - w/2)
+                        y1 = int(y - h/2)
+                        x2 = int(x + w/2)
+                        y2 = int(y + h/2)
+                        cv2.rectangle(orig_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        label = f'ball {conf:.2f}'
+                        if track_id is not None:
+                            label += f' id:{track_id}'
+                        cv2.putText(orig_img, label, (x1, y1-10), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                
+                writer.write(orig_img)
+            
+            print(f"\nProcessing complete for {clip}:")
+            print(f"Total frames processed: {frame_count}")
+            print(f"Frames with detections: {detection_count}")
+            print(f"Detection rate: {detection_count/frame_count*100:.1f}%")
+            
+            if len(ground_truth) == 0:
+                print(f"WARNING: No ground truth found for {clip}")
+            else:
+                print(f"Ground truth frames: {len(ground_truth)}")
             
             # Evaluate predictions
-            metrics = evaluate_predictions(predictions, ground_truth, frame_count)
+            metrics = evaluate_predictions(predictions, ground_truth, frame_count, tracks)
             
             # Update cumulative metrics
             cumulative_metrics['total_frames'] += metrics['total_frames']
@@ -257,20 +486,35 @@ def run_inference_on_videos():
                 json.dump(metrics, f, indent=4)
             
             print(f"\nMetrics for {clip}:")
-            print(f"Total Frames: {frame_count}")
-            print(f"Frames with Ground Truth Ball: {len(ground_truth)}")
-            print(f"Frames with Predicted Ball: {len(predictions)}")
             print(f"True Positives: {metrics['true_positives']}")
             print(f"False Positives: {metrics['false_positives']}")
             print(f"False Negatives: {metrics['false_negatives']}")
             print(f"Precision: {metrics['precision']:.3f}")
             print(f"Recall: {metrics['recall']:.3f}")
             print(f"F1 Score: {metrics['f1_score']:.3f}")
-            print(f"Mean IoU: {metrics['mean_iou']:.3f}")
-            print(f"Position MSE: {metrics['position_mse']:.3f}")
+            
+            if 'trajectory' in metrics:
+                traj = metrics['trajectory']
+                print(f"\nTrajectory Analysis:")
+                print(f"Number of tracks: {traj['num_tracks']}")
+                print(f"Average track length: {traj['avg_track_length']:.1f} frames")
+                print(f"Tracking coverage: {traj['tracking_coverage']*100:.1f}%")
+            
+            if 'tracking' in metrics:
+                track = metrics['tracking']
+                print(f"\nTracking Metrics:")
+                print(f"Track switches: {track['track_switches']}")
+                print(f"Track fragmentations: {track['track_fragmentations']}")
+                print(f"Tracking consistency: {track['tracking_consistency']:.3f}")
+            
+            # After processing all frames, add:
+            writer.release()
+            cap.release()
             
         except Exception as e:
-            print(f"ERROR processing {clip}: {e}")
+            print(f"ERROR processing {clip}:")
+            import traceback
+            traceback.print_exc()
             continue
             
         print(f"Completed processing {clip}")
